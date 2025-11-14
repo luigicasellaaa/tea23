@@ -1,76 +1,68 @@
-#include <fmt/chrono.h>
+#include <iostream>
 #include <fmt/format.h>
 
-#include <stdio.h>
-
-typedef enum {
-    STATE_UP,
-    STATE_DOWN,
-    STATE_STOP_UP,
-    STATE_STOP_DOWN,
-    STATE_OPEN,
-    STATE_CLOSED
-} State_t;
-
-typedef enum {
-    EVENT_BUTTON,
-    EVENT_LIMIT_TOP,
-    EVENT_LIMIT_BOTTOM
-} Event_t;
-
-typedef struct {
-    State_t current;
-    Event_t event;
-    State_t next;
-} Transition_t;
-
-Transition_t transitions[] = {
-    { STATE_UP,        EVENT_BUTTON,       STATE_STOP_UP },
-    { STATE_STOP_UP,   EVENT_BUTTON,       STATE_DOWN },
-    { STATE_DOWN,      EVENT_LIMIT_BOTTOM, STATE_CLOSED },
-    { STATE_CLOSED,    EVENT_BUTTON,       STATE_UP },
-    { STATE_UP,        EVENT_LIMIT_TOP,    STATE_OPEN },
-    { STATE_OPEN,      EVENT_BUTTON,       STATE_DOWN },
-    { STATE_STOP_DOWN, EVENT_BUTTON,       STATE_UP },
-    { STATE_DOWN,      EVENT_BUTTON,       STATE_STOP_DOWN },
+enum Zustand {
+    Garagentor_zu,
+    Fahre_hoch,
+    Stop_auf_dem_Weg_nach_oben,
+    Garagentor_offen,
+    Fahre_runter,
+    Stop_auf_dem_Weg_nach_unten,
+    Zustandsanzahl  // Hilfswert, für die Tabellenlänge
 };
 
-const int NUM_TRANSITIONS = sizeof(transitions)/sizeof(Transition_t);
+enum Ereignis {
+    Taste,
+    Endschalter_oben,
+    Endschalter_unten,
+    Ereignisanzahl
+};
+// Look-Up-Tabelle: nächste Zustände
+Zustand overgangsTabelle[Zustandsanzahl][Ereignisanzahl] = {
+    // Garagentor_zu   // Fahre_hoch   // Stop_auf_dem_Weg_nach_oben   // Garagentor_offen   // Fahre_runter   // Stop_auf_dem_Weg_nach_unten
+    // Taste,          Endschalter_oben,         Endschalter_unten
+    {Fahre_hoch, Garagentor_zu, Garagentor_zu},                        // Garagentor_zu
+    {Stop_auf_dem_Weg_nach_oben, Garagentor_offen, Fahre_hoch},        // Fahre_hoch
+    {Fahre_runter, Stop_auf_dem_Weg_nach_oben, Stop_auf_dem_Weg_nach_oben}, // Stop_auf_dem_Weg_nach_oben
+    {Fahre_runter, Garagentor_offen, Garagentor_offen},                // Garagentor_offen
+    {Stop_auf_dem_Weg_nach_unten, Fahre_runter, Garagentor_zu},        // Fahre_runter
+    {Fahre_hoch, Stop_auf_dem_Weg_nach_unten, Stop_auf_dem_Weg_nach_unten} // Stop_auf_dem_Weg_nach_unten
+};
 
-// ❗ FEHLTE
-State_t currentState = STATE_UP;
+Zustand zustand = Garagentor_zu;
 
-// ❗ FEHLTE
-void handleEvent(Event_t event)
-{
-    for (int i = 0; i < NUM_TRANSITIONS; i++) {
-        if (transitions[i].current == currentState &&
-            transitions[i].event == event)
-        {
-            currentState = transitions[i].next;
-            return;
-        }
+void printZustand() {
+    switch (zustand) {
+        case Garagentor_zu: fmt::println("Garagentor zu"); break;
+        case Fahre_hoch: fmt::println("Fahre hoch"); break;
+        case Stop_auf_dem_Weg_nach_oben: fmt::println("Stop auf dem Weg nach Oben"); break;
+        case Garagentor_offen: fmt::println("Garagentor offen"); break;
+        case Fahre_runter: fmt::println("Fahre runter"); break;
+        case Stop_auf_dem_Weg_nach_unten: fmt::println("Stop auf dem Weg nach unten"); break;
     }
 }
 
-auto main(int argc, char** argv) -> int
-{
-    printf("Start state: %d\n", currentState);
+// Einfache Ereignisverarbeitung via Tabelle
+void eingabe(Ereignis ev) {
+    zustand = overgangsTabelle[zustand][ev];
+}
 
-    handleEvent(EVENT_BUTTON);       // Up -> StopUp
-    printf("State now: %d\n", currentState);
+int main() {
+    Ereignis ablauf[] = {
+        Taste, Taste, Taste,
+        Taste, Taste,
+        Endschalter_oben,
+        Taste, Endschalter_unten
+    };
 
-    handleEvent(EVENT_BUTTON);       // StopUp -> Down
-    printf("State now: %d\n", currentState);
-
-    handleEvent(EVENT_LIMIT_BOTTOM); // Down -> Closed
-    printf("State now: %d\n", currentState);
-
-    handleEvent(EVENT_BUTTON);       // Closed -> Up
-    printf("State now: %d\n", currentState);
-
-    fmt::print("Hello, {}!\n", argv[0]);
-
+    int n = sizeof(ablauf) / sizeof(ablauf[0]);
+    printZustand();
+    for (int i = 0; i < n; ++i) {
+        eingabe(ablauf[i]);
+        printZustand();
+    }
     return 0;
 }
+
+
 
